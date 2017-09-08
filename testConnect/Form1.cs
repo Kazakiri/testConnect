@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using MySql.Data.MySqlClient;
 using System.Data.OleDb;
+using System.IO;
 
 namespace testConnect
 {
@@ -21,13 +22,52 @@ namespace testConnect
 
         private void button1_Click(object sender, EventArgs e)
         {
-            string dbHost = "127.0.0.1";//資料庫位址
-            string dbUser = "root";//資料庫使用者帳號
-            string dbPass = "ganto1184";//資料庫使用者密碼
-            string dbName = "stocker";//資料庫名稱
-         
+            listBox1.DataSource = null;
+            getMysql.Enabled = true;
+
+            string dbHost = textIP.Text;//資料庫位址
+            string dbUser = textUser.Text;//資料庫使用者帳號
+            string dbPass = textPass.Text;//資料庫使用者密碼
+            string dbName = textDB.Text;//資料庫名稱
+
             string connStr = "server=" + dbHost + ";uid=" + dbUser + ";pwd=" +
                 dbPass + ";database=" + dbName;
+            MySqlConnection conn = new MySqlConnection(connStr);
+            MySqlCommand command;
+            MySqlDataAdapter tablesAdapter = new MySqlDataAdapter();
+            DataSet tables = new DataSet();
+            string sql = "SHOW TABLES FROM stocker";
+
+            //open
+            conn.Open();
+            command = new MySqlCommand(sql, conn);
+            tablesAdapter.SelectCommand = command;
+            tablesAdapter.Fill(tables);
+            tablesAdapter.Dispose();
+            command.Dispose();
+            conn.Close();
+
+            listBox1.DisplayMember = "Tables_in_stocker";
+            listBox1.ValueMember = "Tables_in_stocker";
+            listBox1.DataSource = tables.Tables[0];
+
+
+        }
+
+        private void getMysql_Click(object sender, EventArgs e)
+        {
+            mysqlGridView1.DataSource = null;
+
+            string dbHost = textIP.Text;//資料庫位址
+            string dbUser = textUser.Text;//資料庫使用者帳號
+            string dbPass = textPass.Text;//資料庫使用者密碼
+            string dbName = textDB.Text;//資料庫名稱
+
+            string connStr = "server=" + dbHost + ";uid=" + dbUser + ";pwd=" +
+                dbPass + ";database=" + dbName;
+
+            string tdate = mysqlTdate.Text; //抓取tdate
+
             MySqlConnection conn = new MySqlConnection(connStr);
             MySqlCommand command = conn.CreateCommand();
 
@@ -38,11 +78,15 @@ namespace testConnect
 
             //使用 MySqlDataAdapter 查詢資料，並將結果存回 DataSet 當做名為 test1 的 DataTable
             string sql = "SELECT * " +
-                "FROM collect1\n" +
-                "WHERE tdate like '170901%'\n" +
-                "ORDER BY serial";
+                "FROM " + listBox1.Text + "\n" +
+                "WHERE tdate like '" + tdate + "%'\n";
             MySqlDataAdapter dataAdapter1 = new MySqlDataAdapter(sql, conn);
             dataAdapter1.Fill(dataSet, "test1");
+
+            //關掉
+            dataAdapter1.Dispose();
+            command.Dispose();
+            conn.Close();
 
             // test1 的 DataTable
             DataTable dataTable = dataSet.Tables["test1"];
@@ -50,19 +94,30 @@ namespace testConnect
             mysqlGridView1.DataSource = dataSet;
             mysqlGridView1.DataMember = "test1";
 
+            mysqlCountLable.Text = "總計:" + Convert.ToString(dataTable.Rows.Count);
 
         }
 
         private void button2_Click(object sender, EventArgs e)
         {
-            string sql = "SELECT serial, Count(serial) AS serial之筆數 " +
-                            "FROM collect1\n"+
-                            "WHERE tdate like '170901%'\n" +
-                            "GROUP BY serial\n"+
-                            "ORDER BY serial";
+            MDBGridView2.DataSource = null;
+
+            string tdate = MDBTdate.Text;
+            string tables = listBox1.Text;
+
+            OpenFileDialog file = new OpenFileDialog();
+
+            string sql = "SELECT serial " +
+                         "FROM " + tables + "\n" +
+                         "WHERE tdate like '" + tdate + "%'\n" +
+                         "GROUP BY serial\n" +
+                         "ORDER BY serial";
 
             DataTable dt = GetOleDbDataTable("pdadata2.mdb", sql);
             MDBGridView2.DataSource = dt;
+            MDBLable.Text = "總計:" + Convert.ToString(dt.Rows.Count);
+           
+
         }
 
 
@@ -77,7 +132,7 @@ namespace testConnect
                 MDBserial[i] = col;
                 i++;
             }
-            
+
             int y = 0;
             foreach (DataGridViewRow dr in mysqlGridView1.Rows)
             {
@@ -137,6 +192,193 @@ namespace testConnect
         private void compareResult_TextChanged_1(object sender, EventArgs e)
         {
 
+        }
+
+        private void chooseMDB_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void remarkButton_Click(object sender, EventArgs e)
+        {
+            mysqlGridView1.DataSource = null;
+
+            string dbHost = textIP.Text;//資料庫位址
+            string dbUser = textUser.Text;//資料庫使用者帳號
+            string dbPass = textPass.Text;//資料庫使用者密碼
+            string dbName = textDB.Text;//資料庫名稱
+
+            string connStr = "server=" + dbHost + ";uid=" + dbUser + ";pwd=" +
+                dbPass + ";database=" + dbName;
+
+            string tdate = mysqlTdate.Text; //抓取tdate
+
+            MySqlConnection conn = new MySqlConnection(connStr);
+            MySqlCommand command = conn.CreateCommand();
+
+            conn.Open();
+
+            //建立 DataSet
+            DataSet dataSet = new DataSet();
+
+            //使用 MySqlDataAdapter 查詢資料，並將結果存回 DataSet 當做名為 test1 的 DataTable
+            string sql = "SELECT remark,no,name,lotno,count(remark) as '數量' " +
+                "FROM " + listBox1.Text + "\n" +
+                "WHERE tdate like '" + tdate + "%'\n" +
+                "GROUP BY remark,no";
+            MySqlDataAdapter dataAdapter1 = new MySqlDataAdapter(sql, conn);
+            dataAdapter1.Fill(dataSet, "test1");
+
+            //關掉
+            dataAdapter1.Dispose();
+            command.Dispose();
+            conn.Close();
+
+            // test1 的 DataTable
+            DataTable dataTable = dataSet.Tables["test1"];
+
+            mysqlGridView1.DataSource = dataSet;
+            mysqlGridView1.DataMember = "test1";
+
+            mysqlCountLable.Text = "總計:" + Convert.ToString(dataTable.Rows.Count);
+        }
+
+        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void printButton_Click(object sender, EventArgs e)
+        {
+
+
+            /*                          準備印                                    */
+            string path = @"C:\Users\yuchi\Dropbox\BT10\TEST\qrcode.txt";
+            string triggerPath = @"C:\Users\yuchi\Dropbox\BT10\TEST.txt";
+
+            try
+            {
+                //決定qrcode.txt內容
+
+                //客戶編號;客戶名稱 板號;B001/客戶編號:客戶編號
+                string qrcode = "";
+                qrcode = qrcode + Convert.ToString(mysqlGridView1.Rows[1].Cells[2].Value) + ";" +
+                Convert.ToString(mysqlGridView1.Rows[1].Cells[2].Value) +
+                Convert.ToString(mysqlGridView1.Rows[1].Cells[3].Value) +
+                Convert.ToString(mysqlGridView1.Rows[1].Cells[19].Value) + ";B001/" +
+                Convert.ToString(mysqlGridView1.Rows[1].Cells[2].Value) + ":" +
+                Convert.ToString(mysqlGridView1.Rows[1].Cells[2].Value);
+
+                int mdateMin = 99999999;
+                int mdateMax = 0;
+                foreach (DataGridViewRow dr in mysqlGridView1.Rows)
+                {
+                    qrcode = qrcode + "/" + Convert.ToString(dr.Cells["no"].Value) + ":"
+                        + Convert.ToString(dr.Cells["serial"].Value) +
+                        ":1:1";
+                    if (Convert.ToInt32(dr.Cells["mdate"].Value) < mdateMin)
+                    {
+                        mdateMin = Convert.ToInt32(dr.Cells["mdate"].Value);
+                    }
+
+                    if (Convert.ToInt32(dr.Cells["mdate"].Value) > mdateMax)
+                    {
+                        mdateMax = Convert.ToInt32(dr.Cells["mdate"].Value);
+                    }
+                }
+
+                qrcode = qrcode + ";" + Convert.ToString(mdateMin) + "~" + Convert.ToString(mdateMax) + ";1";
+
+                // Delete the file if it exists.
+                if (File.Exists(path))
+                {
+                    // Note that no lock is put on the
+                    // file and the possibility exists
+                    // that another process could do
+                    // something with it between
+                    // the calls to Exists and Delete.
+                    File.Delete(path);
+                }
+
+                // Create the file.
+
+                using (FileStream fs = File.Create(path))
+                {
+                    // Add some information to the file.
+                    StreamWriter sw = new StreamWriter(fs, Encoding.Unicode);
+                    sw.Write(qrcode, false, Encoding.Unicode);
+                    sw.Close();
+                    fs.Close();
+                }
+
+                // Open the stream and read it back.
+                /*using (StreamReader sr = File.OpenText(path))
+                {
+                    string s = "";
+                    while ((s = sr.ReadLine()) != null)
+                    {
+                        MessageBox.Show(s);
+                    }
+                }*/
+            }
+
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString());
+            }
+            FileStream fst = File.Create(triggerPath);
+            fst.Close();
+        }
+
+
+
+        private void selectRemarkButton_Click(object sender, EventArgs e)
+        {
+            mysqlGridView1.DataSource = null;
+
+            string dbHost = textIP.Text;//資料庫位址
+            string dbUser = textUser.Text;//資料庫使用者帳號
+            string dbPass = textPass.Text;//資料庫使用者密碼
+            string dbName = textDB.Text;//資料庫名稱
+
+            string connStr = "server=" + dbHost + ";uid=" + dbUser + ";pwd=" +
+                dbPass + ";database=" + dbName;
+
+            string tdate = mysqlTdate.Text; //抓取tdate
+
+            MySqlConnection conn = new MySqlConnection(connStr);
+            MySqlCommand command = conn.CreateCommand();
+
+            conn.Open();
+
+            //建立 DataSet
+            DataSet dataSet = new DataSet();
+
+            //使用 MySqlDataAdapter 查詢資料，並將結果存回 DataSet 當做名為 test1 的 DataTable
+            string sql = "SELECT * " +
+                "FROM " + listBox1.Text + "\n" +
+                "WHERE remark = '" + remarkText.Text + "'\n" +
+                "AND tdate like '" + tdate + "%'\n";
+            MySqlDataAdapter dataAdapter1 = new MySqlDataAdapter(sql, conn);
+            dataAdapter1.Fill(dataSet, "test1");
+
+            //關掉
+            dataAdapter1.Dispose();
+            command.Dispose();
+            conn.Close();
+
+            // test1 的 DataTable
+            DataTable dataTable = dataSet.Tables["test1"];
+
+            mysqlGridView1.DataSource = dataSet;
+            mysqlGridView1.DataMember = "test1";
+
+            mysqlCountLable.Text = "總計:" + Convert.ToString(dataTable.Rows.Count);
+        }
+
+        private void testButton_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show(Convert.ToString(mysqlGridView1.Rows[0].Cells[1].Value));
         }
     }
 }
